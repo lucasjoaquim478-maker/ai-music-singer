@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Music Singer - Crie Músicas com Voz Sintética</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎤</text></svg>">
+</head>
+<body>
+  <div id="app">
+    <header>
+      <div class="logo">
+        <div class="logo-icon">♪</div>
+        <div>
+          <h1>AI Music Singer</h1>
+          <p class="subtitle">Transforme suas letras em música com inteligência artificial</p>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <div class="editor-section">
+        <div class="lyrics-container">
+          <div class="section-header">
+            <label for="lyrics">Digite sua letra</label>
+            <div class="lyrics-actions">
+              <button id="btnSalvar" class="btn-sm" title="Salvar letra">💾 Salvar</button>
+              <button id="btnExportar" class="btn-sm" title="Exportar como TXT">📄 Exportar</button>
+              <button id="btnLimpar" class="btn-sm" title="Limpar letra">🗑️ Limpar</button>
+            </div>
+          </div>
+          <textarea id="lyrics" placeholder="Digite ou cole a letra da sua música aqui...&#10;&#10;Exemplo:&#10;Na cidade cinzenta eu vi você passar&#10;Um sorriso que fez o mundo inteiro parar&#10;Não importa o destino, eu quero te encontrar&#10;Nessa canção que acabei de inventar"></textarea>
+          <div class="char-count"><span id="charCount">0</span> caracteres</div>
+        </div>
+
+        <div class="controls-container">
+          <div class="section-header">
+            <label>Configurações da música</label>
+          </div>
+          
+          <div class="control-group">
+            <label for="styleSelect">🎵 Ritmo / Estilo</label>
+            <select id="styleSelect">
+              <option value="pop">Pop</option>
+              <option value="rock">Rock</option>
+              <option value="funk">Funk</option>
+              <option value="rap">Rap</option>
+              <option value="sertanejo">Sertanejo</option>
+              <option value="eletronica">Eletrônica</option>
+              <option value="gospel">Gospel</option>
+            </select>
+          </div>
+
+          <div class="control-group">
+            <label for="voiceSelect">🗣️ Voz</label>
+            <select id="voiceSelect">
+              <option value="">Carregando vozes...</option>
+            </select>
+          </div>
+
+          <div class="control-group">
+            <label for="speedRange">⚡ Velocidade: <span id="speedValue">1.0x</span></label>
+            <input type="range" id="speedRange" min="0.5" max="2.0" step="0.1" value="1.0">
+          </div>
+
+          <div class="control-group">
+            <label for="volumeRange">🔊 Volume: <span id="volumeValue">100%</span></label>
+            <input type="range" id="volumeRange" min="0" max="100" step="1" value="100">
+          </div>
+
+          <div class="style-preview" id="stylePreview">
+            <div class="preview-bar"></div>
+            <span id="previewLabel">Pop • Andamento médio • Voz suave</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="player-section">
+        <div class="player-status" id="playerStatus">
+          <div class="status-indicator" id="statusIndicator"></div>
+          <span id="statusText">Pronto para criar</span>
+        </div>
+
+        <div class="player-controls">
+          <button id="btnGerar" class="btn-primary">
+            <span class="btn-icon">▶</span>
+            <span class="btn-text">Gerar Música</span>
+          </button>
+          <button id="btnParar" class="btn-secondary" disabled>
+            <span class="btn-icon">⏹</span>
+            <span class="btn-text">Parar</span>
+          </button>
+          <button id="btnPausar" class="btn-secondary" disabled>
+            <span class="btn-icon" id="pauseIcon">⏸</span>
+            <span class="btn-text" id="pauseText">Pausar</span>
+          </button>
+        </div>
+
+        <div class="progress-container" id="progressContainer" style="display:none">
+          <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+          </div>
+          <div class="progress-info">
+            <span id="progressLine">Linha 0 / 0</span>
+            <span id="progressTime">0:00 / 0:00</span>
+          </div>
+        </div>
+
+        <div class="current-line" id="currentLine">—</div>
+      </div>
+
+      <div class="history-section" id="historySection">
+        <div class="section-header">
+          <label>📜 Histórico</label>
+          <button id="btnLimparHistorico" class="btn-sm">Limpar</button>
+        </div>
+        <div class="history-list" id="historyList">
+          <div class="history-empty">Nenhuma música criada ainda</div>
+        </div>
+      </div>
+    </main>
+
+    <footer>
+      <p>AI Music Singer &copy; 2026 &mdash; Feito com Web Speech API</p>
+    </footer>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
