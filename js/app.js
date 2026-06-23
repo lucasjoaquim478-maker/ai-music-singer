@@ -447,8 +447,8 @@ const App = {
 
   async testProvider(provider) {
     const key = provider === 'elevenlabs'
-      ? this.elements.elevenlabsKey.value
-      : this.elements.openaiKey.value;
+      ? this.elements.elevenlabsKey.value.trim()
+      : this.elements.openaiKey.value.trim();
 
     if (!key) {
       this.showToast(`Configure a API key do ${provider} primeiro`, 'error');
@@ -458,22 +458,29 @@ const App = {
     VoiceEngine.setApiKey(provider, key);
     this.showToast(`Testando conexão com ${provider}...`, 'info');
 
-    const testLines = ['Teste de voz artificial.'];
+    const savedFinish = VoiceEngine.onFinish;
+    const savedError = VoiceEngine.onError;
 
     VoiceEngine.onFinish = () => {
-      this.showToast(`${provider} conectado com sucesso! Voz reproduzida.`, 'success');
-      VoiceEngine.onFinish = () => {
-        if (this.state.isPlaying && !this.state.isPaused) this.finish();
-      };
+      this.showToast(`${provider} conectado! Voz reproduzida.`, 'success');
+      VoiceEngine.onFinish = savedFinish;
+      VoiceEngine.onError = savedError;
     };
 
     VoiceEngine.onError = (msg) => {
-      this.showToast(`Erro: ${msg}`, 'error');
-      VoiceEngine.onError = (msg2) => { this.showToast(msg2, 'error'); };
+      this.showToast(`Falha: ${msg}`, 'error');
+      VoiceEngine.onFinish = savedFinish;
+      VoiceEngine.onError = savedError;
     };
 
     VoiceEngine.setProvider(provider);
-    VoiceEngine.speak(testLines, { style: 'pop', pitch: 1.0, rate: 1.0, volume: 1.0 });
+    try {
+      await VoiceEngine.speak(['Teste de voz artificial.'], { style: 'pop', pitch: 1.0, rate: 1.0, volume: 1.0 });
+    } catch (e) {
+      this.showToast(`Erro: ${e.message}`, 'error');
+      VoiceEngine.onFinish = savedFinish;
+      VoiceEngine.onError = savedError;
+    }
   },
 
   exportTxt() {
