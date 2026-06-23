@@ -8,6 +8,8 @@ const App = {
     isGenerating: false,
     currentUtterance: null,
     currentTimeout: null,
+    recordedBlob: null,
+    musicEnabled: true,
   },
 
   elements: {},
@@ -61,6 +63,10 @@ const App = {
       historySection: $('historySection'),
       previewLabel: $('previewLabel'),
       toast: $('toast'),
+      musicToggle: $('musicToggle'),
+      musicVolume: $('musicVolume'),
+      musicVolumeValue: $('musicVolumeValue'),
+      btnDownload: $('btnDownload'),
     };
   },
 
@@ -83,6 +89,16 @@ const App = {
     el.btnExportar.addEventListener('click', () => this.exportTxt());
     el.btnLimpar.addEventListener('click', () => this.clearLyrics());
     el.btnLimparHistorico.addEventListener('click', () => this.clearHistory());
+    el.btnDownload.addEventListener('click', () => this.downloadAudio());
+
+    el.musicVolume.addEventListener('input', () => {
+      const val = parseInt(el.musicVolume.value);
+      el.musicVolumeValue.textContent = val + '%';
+      MusicEngine.setVolume(val / 100);
+    });
+    el.musicToggle.addEventListener('change', () => {
+      this.state.musicEnabled = el.musicToggle.checked;
+    });
 
     window.addEventListener('beforeunload', () => this.stop());
   },
@@ -143,16 +159,24 @@ const App = {
     this.state.currentLine = 0;
     this.state.isPlaying = true;
     this.state.isPaused = false;
+    this.state.recordedBlob = null;
 
     this.setStatus('Gerando música...', 'generating');
     this.elements.btnGerar.disabled = true;
     this.elements.btnParar.disabled = false;
     this.elements.btnPausar.disabled = false;
+    this.elements.btnDownload.disabled = true;
     this.elements.pauseText.textContent = 'Pausar';
     this.elements.pauseIcon.textContent = '⏸';
     this.elements.progressContainer.style.display = 'block';
     this.elements.currentLine.textContent = '🎵 Iniciando...';
     this.updateProgress(0, 0);
+
+    if (this.state.musicEnabled) {
+      const style = this.elements.styleSelect.value;
+      MusicEngine.setVolume(parseInt(this.elements.musicVolume.value) / 100);
+      MusicEngine.start(style);
+    }
 
     this.playLine(0);
   },
@@ -173,6 +197,8 @@ const App = {
     const voiceIdx = parseInt(this.elements.voiceSelect.value);
     const speed = parseFloat(this.elements.speedRange.value);
     const volume = parseInt(this.elements.volumeRange.value) / 100;
+
+    MusicEngine.ensureRunning();
 
     this.elements.currentLine.textContent = line;
     this.updateProgress(index + 1, this.state.totalLines);
@@ -210,13 +236,22 @@ const App = {
     synth.speak(utterance);
   },
 
-  stop() {
+  async stop() {
     this.state.isPlaying = false;
     this.state.isPaused = false;
     this.state.isGenerating = false;
     this.state.currentLine = 0;
 
     window.speechSynthesis.cancel();
+    MusicEngine.stop();
+
+    if (MusicEngine.isRecording) {
+      const blob = await MusicEngine.stopRecording();
+      if (blob) {
+        this.state.recordedBlob = blob;
+        this.elements.btnDownload.disabled = false;
+      }
+    }
 
     if (this.state.currentTimeout) {
       clearTimeout(this.state.currentTimeout);
@@ -242,6 +277,9 @@ const App = {
       this.elements.pauseText.textContent = 'Pausar';
       this.elements.pauseIcon.textContent = '⏸';
       this.setStatus(`Cantando: linha ${this.state.currentLine + 1} de ${this.state.totalLines}`, 'playing');
+      if (MusicEngine.ctx && MusicEngine.ctx.state === 'suspended') {
+        MusicEngine.ctx.resume();
+      }
       this.playLine(this.state.currentLine);
     } else {
       this.state.isPaused = true;
@@ -249,13 +287,25 @@ const App = {
       this.elements.pauseIcon.textContent = '▶';
       this.setStatus('Pausado', 'paused');
       window.speechSynthesis.cancel();
+      if (MusicEngine.ctx) {
+        MusicEngine.ctx.suspend();
+      }
     }
   },
 
-  finish() {
+  async finish() {
     if (!this.state.isPlaying) return;
     this.state.isPlaying = false;
     this.state.isGenerating = false;
+
+    MusicEngine.stop();
+    if (MusicEngine.isRecording) {
+      const blob = await MusicEngine.stopRecording();
+      if (blob) {
+        this.state.recordedBlob = blob;
+        this.elements.btnDownload.disabled = false;
+      }
+    }
 
     this.elements.btnGerar.disabled = false;
     this.elements.btnParar.disabled = true;
@@ -323,6 +373,20 @@ const App = {
     a.click();
     URL.revokeObjectURL(a.href);
     this.showToast('Arquivo exportado!', 'success');
+  },
+
+  downloadAudio() {
+    if (!this.state.recordedBlob) {
+      this.showToast('Nenhum áudio gravado disponível', 'error');
+      return;
+    }
+    const style = this.elements.styleSelect.value;
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(this.state.recordedBlob);
+    a.download = `instrumental-${style}-${Date.now()}.webm`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    this.showToast('Download do áudio iniciado!', 'success');
   },
 
   clearLyrics() {

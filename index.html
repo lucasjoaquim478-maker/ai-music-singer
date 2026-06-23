@@ -65,8 +65,20 @@
           </div>
 
           <div class="control-group">
-            <label for="volumeRange">🔊 Volume: <span id="volumeValue">100%</span></label>
+            <label for="volumeRange">🔊 Voz: <span id="volumeValue">100%</span></label>
             <input type="range" id="volumeRange" min="0" max="100" step="1" value="100">
+          </div>
+
+          <div class="control-group" style="flex-direction:row;align-items:center;gap:10px">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text-secondary);font-weight:500">
+              <input type="checkbox" id="musicToggle" checked>
+              🎵 Música de fundo
+            </label>
+          </div>
+
+          <div class="control-group" id="musicVolumeGroup">
+            <label for="musicVolume">🎚️ Volume da música: <span id="musicVolumeValue">70%</span></label>
+            <input type="range" id="musicVolume" min="0" max="100" step="1" value="70">
           </div>
 
           <div class="style-preview" id="stylePreview">
@@ -94,6 +106,10 @@
           <button id="btnPausar" class="btn-secondary" disabled>
             <span class="btn-icon" id="pauseIcon">⏸</span>
             <span class="btn-text" id="pauseText">Pausar</span>
+          </button>
+          <button id="btnDownload" class="btn-secondary" disabled title="Download do áudio instrumental">
+            <span class="btn-icon">💾</span>
+            <span class="btn-text">Download MP3</span>
           </button>
         </div>
 
@@ -128,6 +144,7 @@
 
   <div id="toast" class="toast"></div>
 
+  <script src="js/music-engine.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
