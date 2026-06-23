@@ -1,13 +1,10 @@
 const App = {
   state: {
-    voices: [],
     currentLine: 0,
     totalLines: 0,
     isPlaying: false,
     isPaused: false,
     isGenerating: false,
-    currentUtterance: null,
-    currentTimeout: null,
     recordedBlob: null,
     musicEnabled: true,
   },
@@ -25,11 +22,13 @@ const App = {
   },
 
   init() {
+    VoiceEngine.init();
     this.cacheElements();
     this.bindEvents();
     this.loadVoices();
     this.loadHistory();
     this.updateCharCount();
+    this.loadVoiceProviderConfig();
   },
 
   cacheElements() {
@@ -74,6 +73,14 @@ const App = {
       aiScale: $('aiScale'),
       aiIntensity: $('aiIntensity'),
       aiSections: $('aiSections'),
+      voiceProvider: $('voiceProvider'),
+      nativeVoiceGroup: $('nativeVoiceGroup'),
+      elevenlabsConfig: $('elevenlabsConfig'),
+      elevenlabsKey: $('elevenlabsKey'),
+      openaiConfig: $('openaiConfig'),
+      openaiKey: $('openaiKey'),
+      btnTestElevenlabs: $('btnTestElevenlabs'),
+      btnTestOpenai: $('btnTestOpenai'),
     };
   },
 
@@ -87,7 +94,13 @@ const App = {
     el.volumeRange.addEventListener('input', () => {
       el.volumeValue.textContent = parseInt(el.volumeRange.value) + '%';
     });
-    el.styleSelect.addEventListener('change', () => this.updateStylePreview());
+    el.styleSelect.addEventListener('change', () => {
+      this.updateStylePreview();
+      localStorage.setItem('ai_singer_style', el.styleSelect.value);
+    });
+    el.voiceSelect.addEventListener('change', () => {
+      localStorage.setItem('ai_singer_voice_idx', el.voiceSelect.value);
+    });
 
     el.btnGerar.addEventListener('click', () => this.generate());
     el.btnParar.addEventListener('click', () => this.stop());
@@ -107,35 +120,50 @@ const App = {
       this.state.musicEnabled = el.musicToggle.checked;
     });
 
+    el.voiceProvider.addEventListener('change', () => this.onVoiceProviderChange());
+    el.elevenlabsKey.addEventListener('change', () => {
+      VoiceEngine.setApiKey('elevenlabs', el.elevenlabsKey.value);
+    });
+    el.openaiKey.addEventListener('change', () => {
+      VoiceEngine.setApiKey('openai', el.openaiKey.value);
+    });
+    el.btnTestElevenlabs.addEventListener('click', () => this.testProvider('elevenlabs'));
+    el.btnTestOpenai.addEventListener('click', () => this.testProvider('openai'));
+
+    VoiceEngine.onFinish = () => {
+      if (this.state.isPlaying && !this.state.isPaused) {
+        this.finish();
+      }
+    };
+
+    VoiceEngine.onError = (msg) => {
+      this.showToast(msg, 'error');
+    };
+
     window.addEventListener('beforeunload', () => this.stop());
   },
 
   loadVoices() {
-    const synth = window.speechSynthesis;
-    const load = () => {
-      const voices = synth.getVoices().filter(v => v.lang.startsWith('pt') || v.lang.startsWith('en'));
-      this.state.voices = voices.length > 0 ? voices : synth.getVoices();
-      this.populateVoices();
+    const el = this.elements;
+    const update = () => {
+      const voices = VoiceEngine.readVoices();
+      el.voiceSelect.innerHTML = '';
+      voices.forEach((v, i) => {
+        const opt = document.createElement('option');
+        opt.value = i;
+        const isNeural = v.name.toLowerCase().includes('neural') || v.name.toLowerCase().includes('natural');
+        opt.textContent = `${v.name} (${v.lang})${isNeural ? ' 🧠' : ''}`;
+        el.voiceSelect.appendChild(opt);
+      });
+      if (voices.length === 0) {
+        el.voiceSelect.innerHTML = '<option value="">Nenhuma voz disponível</option>';
+      }
+      el.voiceSelect.value = localStorage.getItem('ai_singer_voice_idx') || '0';
     };
-    load();
-    if (synth.onvoiceschanged !== undefined) {
-      synth.onvoiceschanged = load;
-    }
-    setTimeout(load, 1000);
-  },
 
-  populateVoices() {
-    const el = this.elements.voiceSelect;
-    el.innerHTML = '';
-    this.state.voices.forEach((v, i) => {
-      const opt = document.createElement('option');
-      opt.value = i;
-      opt.textContent = `${v.name} (${v.lang})`;
-      el.appendChild(opt);
-    });
-    if (this.state.voices.length === 0) {
-      el.innerHTML = '<option value="">Nenhuma voz disponível</option>';
-    }
+    VoiceEngine.loadNativeVoices();
+    setTimeout(update, 500);
+    setTimeout(update, 1500);
   },
 
   updateStylePreview() {
@@ -221,59 +249,53 @@ const App = {
     this.playLine(0);
   },
 
-  playLine(index) {
-    if (!this.state.isPlaying || this.state.isPaused || index >= this.state.totalLines) {
-      if (index >= this.state.totalLines && this.state.isPlaying) {
-        this.finish();
-      }
-      return;
-    }
+  playLine(startIndex) {
+    if (!this.state.isPlaying) return;
 
-    const lines = this.getLines();
-    this.state.currentLine = index;
-    const line = lines[index];
+    const allLines = this.getLines();
+    const remainingLines = allLines.slice(startIndex);
+    if (remainingLines.length === 0) { this.finish(); return; }
+
+    this.state.currentLine = startIndex;
     const style = this.elements.styleSelect.value;
     const cfg = this.styleConfigs[style];
     const voiceIdx = parseInt(this.elements.voiceSelect.value);
     const speed = parseFloat(this.elements.speedRange.value);
     const volume = parseInt(this.elements.volumeRange.value) / 100;
 
+    this.elements.currentLine.textContent = remainingLines[0];
+    this.updateProgress(startIndex + 1, allLines.length);
     MusicEngine.ensureRunning();
 
-    this.elements.currentLine.textContent = line;
-    this.updateProgress(index + 1, this.state.totalLines);
+    const voice = VoiceEngine.nativeVoices[voiceIdx] || null;
 
-    const synth = window.speechSynthesis;
-    synth.cancel();
-
-    const utterance = new SpeechSynthesisUtterance(line);
-    utterance.lang = 'pt-BR';
-    utterance.volume = volume;
-    utterance.rate = speed * cfg.rate;
-    utterance.pitch = cfg.pitch;
-
-    if (this.state.voices[voiceIdx]) {
-      utterance.voice = this.state.voices[voiceIdx];
-    }
-
-    this.state.currentUtterance = utterance;
-
-    if (index < this.state.totalLines - 1) {
-      utterance.onend = () => {
-        if (this.state.isPlaying && !this.state.isPaused) {
-          this.playLine(index + 1);
-        }
-      };
-    } else {
-      utterance.onend = () => this.finish();
-    }
-
-    utterance.onerror = (e) => {
-      console.error('Erro no speech:', e);
+    VoiceEngine.onLineEnd = (lineIdx) => {
+      if (!this.state.isPlaying) return;
+      const globalIdx = startIndex + lineIdx;
+      this.state.currentLine = globalIdx;
+      if (allLines[globalIdx]) {
+        this.elements.currentLine.textContent = allLines[globalIdx];
+      }
+      this.updateProgress(globalIdx + 1, allLines.length);
+      this.setStatus(`Cantando: linha ${globalIdx + 1} de ${allLines.length}`, 'playing');
     };
 
-    this.setStatus(`Cantando: linha ${index + 1} de ${this.state.totalLines}`, 'playing');
-    synth.speak(utterance);
+    VoiceEngine.onFinish = () => {
+      if (this.state.isPlaying) this.finish();
+    };
+
+    VoiceEngine.onError = (msg) => {
+      this.showToast(msg, 'error');
+      this.stop();
+    };
+
+    VoiceEngine.speak(remainingLines, {
+      style,
+      pitch: cfg.pitch,
+      rate: speed * cfg.rate,
+      volume,
+      voice,
+    });
   },
 
   async stop() {
@@ -282,7 +304,7 @@ const App = {
     this.state.isGenerating = false;
     this.state.currentLine = 0;
 
-    window.speechSynthesis.cancel();
+    VoiceEngine.stop();
     MusicEngine.stop();
 
     if (MusicEngine.isRecording) {
@@ -291,11 +313,6 @@ const App = {
         this.state.recordedBlob = blob;
         this.elements.btnDownload.disabled = false;
       }
-    }
-
-    if (this.state.currentTimeout) {
-      clearTimeout(this.state.currentTimeout);
-      this.state.currentTimeout = null;
     }
 
     this.elements.btnGerar.disabled = false;
@@ -320,13 +337,16 @@ const App = {
       if (MusicEngine.ctx && MusicEngine.ctx.state === 'suspended') {
         MusicEngine.ctx.resume();
       }
-      this.playLine(this.state.currentLine);
+      VoiceEngine.resume();
+      if (VoiceEngine.currentProvider === 'native') {
+        this.playLine(this.state.currentLine);
+      }
     } else {
       this.state.isPaused = true;
       this.elements.pauseText.textContent = 'Continuar';
       this.elements.pauseIcon.textContent = '▶';
       this.setStatus('Pausado', 'paused');
-      window.speechSynthesis.cancel();
+      VoiceEngine.pause();
       if (MusicEngine.ctx) {
         MusicEngine.ctx.suspend();
       }
@@ -401,6 +421,59 @@ const App = {
         this.updateStylePreview();
       }
     } catch {}
+  },
+
+  loadVoiceProviderConfig() {
+    const el = this.elements;
+    const saved = localStorage.getItem('ai_singer_voice_provider');
+    if (saved) {
+      el.voiceProvider.value = saved;
+    }
+    VoiceEngine.loadApiKeys();
+    el.elevenlabsKey.value = VoiceEngine.apiKeys.elevenlabs || '';
+    el.openaiKey.value = VoiceEngine.apiKeys.openai || '';
+    this.onVoiceProviderChange();
+  },
+
+  onVoiceProviderChange() {
+    const provider = this.elements.voiceProvider.value;
+    localStorage.setItem('ai_singer_voice_provider', provider);
+    VoiceEngine.setProvider(provider);
+
+    this.elements.nativeVoiceGroup.style.display = provider === 'native' ? 'flex' : 'none';
+    this.elements.elevenlabsConfig.style.display = provider === 'elevenlabs' ? 'flex' : 'none';
+    this.elements.openaiConfig.style.display = provider === 'openai' ? 'flex' : 'none';
+  },
+
+  async testProvider(provider) {
+    const key = provider === 'elevenlabs'
+      ? this.elements.elevenlabsKey.value
+      : this.elements.openaiKey.value;
+
+    if (!key) {
+      this.showToast(`Configure a API key do ${provider} primeiro`, 'error');
+      return;
+    }
+
+    VoiceEngine.setApiKey(provider, key);
+    this.showToast(`Testando conexão com ${provider}...`, 'info');
+
+    const testLines = ['Teste de voz artificial.'];
+
+    VoiceEngine.onFinish = () => {
+      this.showToast(`${provider} conectado com sucesso! Voz reproduzida.`, 'success');
+      VoiceEngine.onFinish = () => {
+        if (this.state.isPlaying && !this.state.isPaused) this.finish();
+      };
+    };
+
+    VoiceEngine.onError = (msg) => {
+      this.showToast(`Erro: ${msg}`, 'error');
+      VoiceEngine.onError = (msg2) => { this.showToast(msg2, 'error'); };
+    };
+
+    VoiceEngine.setProvider(provider);
+    VoiceEngine.speak(testLines, { style: 'pop', pitch: 1.0, rate: 1.0, volume: 1.0 });
   },
 
   exportTxt() {
