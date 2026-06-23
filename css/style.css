@@ -483,6 +483,43 @@ footer {
   margin-top: 20px;
 }
 
+/* AI Analysis */
+.ai-analysis {
+  background: linear-gradient(135deg, rgba(124,58,237,0.08), rgba(168,85,247,0.04));
+  border: 1px solid rgba(124,58,237,0.2);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  font-size: 13px;
+}
+
+.ai-header {
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.ai-content { display: flex; flex-direction: column; gap: 4px; }
+
+#aiSummary { color: var(--text-primary); font-weight: 500; }
+
+.ai-tags { display: flex; gap: 4px; flex-wrap: wrap; margin: 4px 0; }
+
+.ai-tag {
+  background: rgba(124,58,237,0.15);
+  color: var(--accent);
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.ai-detail { display: flex; gap: 6px; }
+
+.ai-label { color: var(--text-muted); min-width: 70px; }
+
 /* Toast */
 .toast {
   position: fixed;

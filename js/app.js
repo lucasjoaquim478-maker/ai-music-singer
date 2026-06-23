@@ -67,6 +67,13 @@ const App = {
       musicVolume: $('musicVolume'),
       musicVolumeValue: $('musicVolumeValue'),
       btnDownload: $('btnDownload'),
+      aiAnalysis: $('aiAnalysis'),
+      aiSummary: $('aiSummary'),
+      aiTags: $('aiTags'),
+      aiBpm: $('aiBpm'),
+      aiScale: $('aiScale'),
+      aiIntensity: $('aiIntensity'),
+      aiSections: $('aiSections'),
     };
   },
 
@@ -137,6 +144,35 @@ const App = {
     this.elements.previewLabel.textContent = `${cfg.emoji} ${style.charAt(0).toUpperCase() + style.slice(1)} • ${cfg.desc}`;
   },
 
+  showAnalysis(analysis) {
+    const el = this.elements;
+    el.aiAnalysis.style.display = 'block';
+    el.aiSummary.textContent = analysis.summary;
+    el.aiBpm.textContent = analysis.bpm + ' BPM';
+    el.aiScale.textContent = analysis.scale === 'major' ? 'Maior ☀️' : 'Menor 🌙';
+    el.aiIntensity.textContent = this.intensityLabel(analysis.intensity);
+
+    const sectionNames = {
+      intro: '🎬 Intro', verse: '📖 Verso', chorus: '🎤 Refrão',
+      bridge: '🌉 Ponte', outro: '🏁 Final',
+    };
+    el.aiSections.textContent = analysis.sections.length > 0
+      ? analysis.sections.map(s => sectionNames[s] || s).join(', ')
+      : 'Detecção automática';
+
+    const tags = [analysis.mood, analysis.theme, analysis.scale === 'major' ? 'Tom maior' : 'Tom menor'];
+    el.aiTags.innerHTML = tags
+      .filter(t => t !== 'neutral' && t !== 'other')
+      .map(t => `<span class="ai-tag">${t}</span>`)
+      .join('');
+  },
+
+  intensityLabel(val) {
+    if (val > 0.7) return '🔥 Intenso';
+    if (val > 0.4) return '📊 Médio';
+    return '🌊 Suave';
+  },
+
   updateCharCount() {
     this.elements.charCount.textContent = this.elements.lyrics.value.length;
   },
@@ -161,6 +197,10 @@ const App = {
     this.state.isPaused = false;
     this.state.recordedBlob = null;
 
+    const lyrics = this.elements.lyrics.value;
+    const analysis = LyricsAnalyzer.analyze(lyrics);
+    this.showAnalysis(analysis);
+
     this.setStatus('Gerando música...', 'generating');
     this.elements.btnGerar.disabled = true;
     this.elements.btnParar.disabled = false;
@@ -175,7 +215,7 @@ const App = {
     if (this.state.musicEnabled) {
       const style = this.elements.styleSelect.value;
       MusicEngine.setVolume(parseInt(this.elements.musicVolume.value) / 100);
-      MusicEngine.start(style);
+      MusicEngine.start(style, analysis);
     }
 
     this.playLine(0);
@@ -393,6 +433,7 @@ const App = {
     if (this.state.isPlaying) return;
     this.elements.lyrics.value = '';
     this.updateCharCount();
+    this.elements.aiAnalysis.style.display = 'none';
     this.showToast('Letra limpa', 'info');
   },
 

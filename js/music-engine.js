@@ -7,69 +7,32 @@ const MusicEngine = {
   isPlaying: false,
   isRecording: false,
   volume: 0.7,
-  style: 'pop',
   timerId: null,
   step: 0,
+  steps: 16,
   stepsPerBeat: 4,
-  beatIndex: 0,
+  beat: 0,
+  measure: 0,
 
-  styles: {
-    pop: {
-      bpm: 116, scale: 'major',
-      chords: ['C','F','G','Am'],
-      kick: [1,0,0,0, 1,0,0,0, 1,0,0,0, 1,0,0,0],
-      snare:[0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
-      hat:  [1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0],
-      bass: [0,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0],
-    },
-    rock: {
-      bpm: 136, scale: 'major',
-      chords: ['E','A','D','G'],
-      kick: [1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0],
-      snare:[0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
-      hat:  [1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0],
-      bass: [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
-    },
-    funk: {
-      bpm: 108, scale: 'dorian',
-      chords: ['Dm7','G7','Cmaj7','Am7'],
-      kick: [1,0,1,0, 0,0,1,0, 1,0,0,0, 0,0,1,0],
-      snare:[0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
-      hat:  [0,1,0,1, 0,1,0,1, 0,1,0,1, 0,1,0,1],
-      bass: [0,0,0,0, 2,0,0,0, 0,0,0,0, -1,0,0,0],
-    },
-    rap: {
-      bpm: 92, scale: 'minor',
-      chords: ['Am','F','G','Em'],
-      kick: [1,0,0,0, 1,0,0,0, 0,0,1,0, 0,0,0,0],
-      snare:[0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
-      hat:  [1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0],
-      bass: [0,0,0,0, 0,0,0,0, 2,0,0,0, 0,0,0,0],
-    },
-    sertanejo: {
-      bpm: 76, scale: 'major',
-      chords: ['G','C','D','Em'],
-      kick: [1,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0],
-      snare:[0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
-      hat:  [1,0,0,0, 1,0,0,0, 1,0,0,0, 1,0,0,0],
-      bass: [0,0,0,0, 0,0,0,0, 0,0,0,0, -5,0,0,0],
-    },
-    eletronica: {
-      bpm: 124, scale: 'minor',
-      chords: ['F#m','A','B','D'],
-      kick: [1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0],
-      snare:[0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
-      hat:  [1,1,1,1, 1,1,1,1, 1,1,1,1, 1,1,1,1],
-      bass: [0,0,0,0, 0,0,0,0, 7,0,0,0, 0,0,0,0],
-    },
-    gospel: {
-      bpm: 68, scale: 'major',
-      chords: ['C','F','G','Am'],
-      kick: [1,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0],
-      snare:[0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
-      hat:  [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
-      bass: [0,0,0,0, -3,0,0,0, 0,0,0,0, -7,0,0,0],
-    },
+  analysis: null,
+  bpm: 116,
+  scale: 'major',
+  intensity: 0.5,
+  chords: ['C','F','G','Am'],
+  currentSection: 'intro',
+
+  progressions: {
+    major_happy:  ['C','Am','F','G'],
+    major_calm:   ['C','G','Am','F'],
+    major_energetic: ['E','A','D','G'],
+    major_party:  ['C','F','G','C'],
+    major_love:   ['C','G','Am','F'],
+    minor_sad:    ['Am','Dm','Em','Am'],
+    minor_calm:   ['Am','F','C','G'],
+    minor_night:  ['Dm','Gm','C','F'],
+    minor_spiritual: ['Am','F','G','Em'],
+    minor_energetic: ['F#m','D','A','E'],
+    neutral:      ['C','F','G','C'],
   },
 
   noteFreqs: {
@@ -79,13 +42,10 @@ const MusicEngine = {
   },
 
   chordTypes: {
-    'major':  [0, 4, 7],
-    'minor':  [0, 3, 7],
-    'maj7':   [0, 4, 7, 11],
-    'm7':     [0, 3, 7, 10],
-    '7':      [0, 4, 7, 10],
-    'dim':    [0, 3, 6],
-    'm7dim5': [0, 3, 6, 10],
+    'major':  [0,4,7], 'minor':  [0,3,7],
+    'maj7':   [0,4,7,11], 'm7': [0,3,7,10],
+    '7':      [0,4,7,10], 'dim': [0,3,6],
+    'm7dim5': [0,3,6,10],
   },
 
   parseChord(name) {
@@ -104,11 +64,10 @@ const MusicEngine = {
 
   getChordFreqs(name) {
     const { root, type, octave } = this.parseChord(name);
-    const intervals = this.chordTypes[type] || [0, 4, 7];
-    return intervals.map(interval => {
-      const f = this.getFreq(root, interval + (octave - 3) * 12);
-      return f;
-    });
+    const intervals = this.chordTypes[type] || [0,4,7];
+    return intervals.map(interval =>
+      this.getFreq(root, interval + (octave - 3) * 12)
+    );
   },
 
   init() {
@@ -122,23 +81,36 @@ const MusicEngine = {
   },
 
   ensureRunning() {
-    if (this.ctx && this.ctx.state === 'suspended') {
-      this.ctx.resume();
-    }
+    if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
   },
 
-  start(style) {
+  loadAnalysis(analysis) {
+    this.analysis = analysis;
+    this.bpm = analysis.bpm;
+    this.scale = analysis.scale;
+    this.intensity = analysis.intensity;
+
+    const mood = analysis.mood;
+    const theme = analysis.theme === 'other' ? null : analysis.theme;
+    const key = theme ? `${this.scale}_${theme}` : `${this.scale}_${mood}`;
+
+    this.chords = this.progressions[key] || this.progressions[`${this.scale}_${mood}`] || this.progressions.neutral;
+  },
+
+  start(style, analysis) {
     this.init();
     this.ensureRunning();
-    this.style = style || this.style;
+
+    if (analysis) this.loadAnalysis(analysis);
+    else this.chords = ['C','F','G','Am'];
+
     this.isPlaying = true;
     this.step = 0;
-    this.beatIndex = 0;
+    this.beat = 0;
+    this.measure = 0;
+    this.currentSection = 'intro';
 
-    if (this.timerId) {
-      clearTimeout(this.timerId);
-      this.timerId = null;
-    }
+    if (this.timerId) { clearTimeout(this.timerId); this.timerId = null; }
 
     this.startRecording();
     this.scheduleNext();
@@ -146,36 +118,137 @@ const MusicEngine = {
 
   stop() {
     this.isPlaying = false;
-    if (this.timerId) {
-      clearTimeout(this.timerId);
-      this.timerId = null;
-    }
+    if (this.timerId) { clearTimeout(this.timerId); this.timerId = null; }
   },
 
   scheduleNext() {
     if (!this.isPlaying) return;
-    const cfg = this.styles[this.style];
-    const stepMs = 60000 / (cfg.bpm * this.stepsPerBeat);
+    const stepMs = 60000 / (this.bpm * this.stepsPerBeat);
 
     this.timerId = setTimeout(() => {
       if (!this.isPlaying) return;
+      this.updateSection();
       this.playStep(this.step);
-      this.step = (this.step + 1) % 16;
-      if (this.step === 0) this.beatIndex = (this.beatIndex + 1) % 4;
+      this.step = (this.step + 1) % this.steps;
+      if (this.step === 0) {
+        this.beat = (this.beat + 1) % 4;
+        if (this.beat === 0) this.measure++;
+      }
       this.scheduleNext();
     }, stepMs);
   },
 
+  updateSection() {
+    const m = this.measure;
+    const intensity = this.intensity;
+
+    if (m < 4) this.currentSection = 'intro';
+    else if (m < 12) this.currentSection = 'verse';
+    else if (m < 16) this.currentSection = 'chorus';
+    else if (m < 24) this.currentSection = 'verse';
+    else if (m < 28) this.currentSection = 'chorus';
+    else if (m < 32) this.currentSection = 'bridge';
+    else if (m < 36) this.currentSection = 'chorus';
+    else this.currentSection = 'outro';
+  },
+
+  sectionMultiplier() {
+    switch (this.currentSection) {
+      case 'intro': return 0.4;
+      case 'verse': return 0.7;
+      case 'chorus': return 1.0;
+      case 'bridge': return 0.5;
+      case 'outro': return 0.3;
+      default: return 0.7;
+    }
+  },
+
+  patternsForSection() {
+    const s = this.currentSection;
+    const i = this.intensity;
+
+    if (s === 'intro') {
+      return {
+        kick: [1,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0],
+        snare:[0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
+        hat:  [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
+        bass: [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
+        melody: false,
+        chordIntensity: 0.3,
+      };
+    }
+
+    if (s === 'verse') {
+      const f = i > 0.6 ? 0.8 : 0.6;
+      return {
+        kick: [1,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0].map(x => x * f),
+        snare:[0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0].map(x => x * f),
+        hat:  [1,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0].map(x => x * f),
+        bass: [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
+        melody: i > 0.5,
+        chordIntensity: 0.5,
+      };
+    }
+
+    if (s === 'chorus') {
+      return {
+        kick: [1,0,0,0, 1,0,0,0, 1,0,0,0, 1,0,0,0],
+        snare:[0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
+        hat:  [1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0],
+        bass: [0,0,0,0, 0,0,0,0, 2,0,0,0, 0,0,0,0],
+        melody: true,
+        chordIntensity: 1.0,
+      };
+    }
+
+    if (s === 'bridge') {
+      return {
+        kick: [1,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
+        snare:[0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
+        hat:  [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
+        bass: [0,0,0,0, -5,0,0,0, 0,0,0,0, -3,0,0,0],
+        melody: true,
+        chordIntensity: 0.6,
+      };
+    }
+
+    if (s === 'outro') {
+      return {
+        kick: [1,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
+        snare:[0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
+        hat:  [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
+        bass: [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
+        melody: false,
+        chordIntensity: 0.2,
+      };
+    }
+
+    return {
+      kick: [1,0,0,0, 1,0,0,0, 1,0,0,0, 1,0,0,0],
+      snare:[0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
+      hat:  [1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0],
+      bass: [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
+      melody: true,
+      chordIntensity: 0.8,
+    };
+  },
+
   playStep(step) {
     try {
-      const cfg = this.styles[this.style];
+      const pat = this.patternsForSection();
+      const mul = this.sectionMultiplier();
       const t = this.ctx.currentTime + 0.01;
 
-      if (cfg.kick[step]) this.playKick(t);
-      if (cfg.snare[step]) this.playSnare(t);
-      if (cfg.hat[step]) this.playHat(t);
-      if (cfg.bass[step] !== 0 && cfg.bass[step] !== undefined) this.playBass(t, cfg, step);
-      if (step % 4 === 0) this.playChord(t, cfg, step);
+      const chordIdx = Math.floor(this.measure / 2) % this.chords.length;
+      const chordName = this.chords[chordIdx];
+      const { root } = this.parseChord(chordName);
+
+      if (pat.kick[step]) this.playKick(t, mul);
+      if (pat.snare[step]) this.playSnare(t, mul);
+      if (pat.hat[step]) this.playHat(t, mul);
+      if (pat.bass[step] !== undefined) this.playBass(t, root, pat.bass[step], mul);
+      if (step % 4 === 0) this.playChord(t, chordName, pat.chordIntensity * mul);
+      if (pat.melody && step % 8 === 0) this.playMelodyNote(t, chordName, mul);
     } catch (e) {
       console.error('MusicEngine step error:', e);
     }
@@ -190,20 +263,19 @@ const MusicEngine = {
     return buf;
   },
 
-  playKick(t) {
+  playKick(t, mul) {
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(160, t);
+    osc.frequency.setValueAtTime(200, t);
     osc.frequency.exponentialRampToValueAtTime(35, t + 0.12);
-    gain.gain.setValueAtTime(1.0, t);
+    gain.gain.setValueAtTime(1.0 * mul, t);
     gain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
     osc.connect(gain).connect(this.masterGain);
-    osc.start(t);
-    osc.stop(t + 0.15);
+    osc.start(t); osc.stop(t + 0.15);
   },
 
-  playSnare(t) {
+  playSnare(t, mul) {
     const noise = this.ctx.createBufferSource();
     noise.buffer = this.createNoiseBuffer(0.15);
     const filter = this.ctx.createBiquadFilter();
@@ -211,56 +283,46 @@ const MusicEngine = {
     filter.frequency.value = 260;
     filter.Q.value = 1.0;
     const gain = this.ctx.createGain();
-    gain.gain.setValueAtTime(0.45, t);
+    gain.gain.setValueAtTime(0.45 * mul, t);
     gain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
     noise.connect(filter).connect(gain).connect(this.masterGain);
-    noise.start(t);
-    noise.stop(t + 0.15);
+    noise.start(t); noise.stop(t + 0.15);
   },
 
-  playHat(t) {
+  playHat(t, mul) {
     const noise = this.ctx.createBufferSource();
     noise.buffer = this.createNoiseBuffer(0.04);
     const filter = this.ctx.createBiquadFilter();
     filter.type = 'highpass';
     filter.frequency.value = 7000;
     const gain = this.ctx.createGain();
-    gain.gain.setValueAtTime(0.15, t);
+    gain.gain.setValueAtTime(0.15 * mul, t);
     gain.gain.exponentialRampToValueAtTime(0.001, t + 0.03);
     noise.connect(filter).connect(gain).connect(this.masterGain);
-    noise.start(t);
-    noise.stop(t + 0.04);
+    noise.start(t); noise.stop(t + 0.04);
   },
 
-  playBass(t, cfg, step) {
-    const chordIdx = Math.floor((this.beatIndex * 4 + Math.floor(step / 4)) / 4) % cfg.chords.length;
-    const chordName = cfg.chords[chordIdx];
-    const { root } = this.parseChord(chordName);
-    const semitones = cfg.bass[step] || 0;
-    const freq = this.getFreq(root, -12 + semitones);
-
+  playBass(t, root, semitones, mul) {
+    const freq = this.getFreq(root, -12 + (semitones || 0));
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
     osc.type = 'sawtooth';
     osc.frequency.value = freq;
-    gain.gain.setValueAtTime(0.25, t);
+    gain.gain.setValueAtTime(0.3 * mul, t);
     gain.gain.linearRampToValueAtTime(0.001, t + 0.18);
     const filter = this.ctx.createBiquadFilter();
     filter.type = 'lowpass';
-    filter.frequency.value = 400;
+    filter.frequency.value = 500;
     osc.connect(filter).connect(gain).connect(this.masterGain);
-    osc.start(t);
-    osc.stop(t + 0.2);
+    osc.start(t); osc.stop(t + 0.2);
   },
 
-  playChord(t, cfg, step) {
-    const chordIdx = Math.floor((this.beatIndex * 4 + Math.floor(step / 4)) / 4) % cfg.chords.length;
-    const chordName = cfg.chords[chordIdx];
-    const freqs = this.getChordFreqs(chordName);
-
+  playChord(t, name, mul) {
+    if (mul < 0.01) return;
+    const freqs = this.getChordFreqs(name);
     const gain = this.ctx.createGain();
-    gain.gain.setValueAtTime(0.08, t);
-    gain.gain.linearRampToValueAtTime(0.001, t + 0.9);
+    gain.gain.setValueAtTime(0.12 * mul, t);
+    gain.gain.linearRampToValueAtTime(0.001, t + 1.0);
 
     freqs.forEach((freq, i) => {
       const osc = this.ctx.createOscillator();
@@ -269,11 +331,43 @@ const MusicEngine = {
       const oGain = this.ctx.createGain();
       oGain.gain.value = i === 0 ? 0.6 : 0.3;
       osc.connect(oGain).connect(gain);
-      osc.start(t);
-      osc.stop(t + 0.9);
+      osc.start(t); osc.stop(t + 1.0);
     });
-
     gain.connect(this.masterGain);
+  },
+
+  melodyStep: 0,
+  melodyDirection: 1,
+
+  playMelodyNote(t, name, mul) {
+    if (mul < 0.1) return;
+    const freqs = this.getChordFreqs(name);
+    if (freqs.length === 0) return;
+
+    const noteIdx = this.melodyStep % freqs.length;
+    const baseFreq = freqs[noteIdx];
+
+    const octaves = [1, 2, 2, 1.5, 2, 2.5, 1];
+    const octave = octaves[this.melodyStep % octaves.length];
+
+    const freq = baseFreq * octave;
+
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.value = freq;
+
+    const dur = 0.3 + (this.melodyStep % 3) * 0.1;
+    gain.gain.setValueAtTime(0.15 * mul, t);
+    gain.gain.linearRampToValueAtTime(0.001, t + dur);
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 2000 + (this.melodyStep % 4) * 500;
+
+    osc.connect(filter).connect(gain).connect(this.masterGain);
+    osc.start(t); osc.stop(t + dur);
+    this.melodyStep = (this.melodyStep + 1) % 16;
   },
 
   setVolume(val) {
@@ -286,11 +380,9 @@ const MusicEngine = {
   startRecording() {
     this.recordedChunks = [];
     try {
-      this.mediaRecorder = new MediaRecorder(this.recordDest.stream, {
-        mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-          ? 'audio/webm;codecs=opus'
-          : 'audio/webm',
-      });
+      const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus' : 'audio/webm';
+      this.mediaRecorder = new MediaRecorder(this.recordDest.stream, { mimeType: mime });
       this.mediaRecorder.ondataavailable = (e) => {
         if (e.data.size > 0) this.recordedChunks.push(e.data);
       };
@@ -304,20 +396,15 @@ const MusicEngine = {
   stopRecording() {
     return new Promise((resolve) => {
       if (!this.mediaRecorder || this.mediaRecorder.state === 'inactive') {
-        resolve(null);
-        return;
+        resolve(null); return;
       }
       this.isRecording = false;
       this.mediaRecorder.onstop = () => {
         if (this.recordedChunks.length === 0) { resolve(null); return; }
-        const blob = new Blob(this.recordedChunks, { type: 'audio/webm' });
-        resolve(blob);
+        resolve(new Blob(this.recordedChunks, { type: 'audio/webm' }));
       };
-      if (this.mediaRecorder.state !== 'inactive') {
-        this.mediaRecorder.stop();
-      } else {
-        resolve(null);
-      }
+      if (this.mediaRecorder.state !== 'inactive') this.mediaRecorder.stop();
+      else resolve(null);
     });
   },
 };

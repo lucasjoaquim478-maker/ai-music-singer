@@ -85,6 +85,18 @@
             <div class="preview-bar"></div>
             <span id="previewLabel">Pop • Andamento médio • Voz suave</span>
           </div>
+
+          <div id="aiAnalysis" class="ai-analysis" style="display:none">
+            <div class="ai-header">🤖 IA — Análise da Letra</div>
+            <div class="ai-content">
+              <span id="aiSummary">—</span>
+              <div class="ai-tags" id="aiTags"></div>
+              <div class="ai-detail"><span class="ai-label">BPM:</span> <span id="aiBpm">—</span></div>
+              <div class="ai-detail"><span class="ai-label">Tom:</span> <span id="aiScale">—</span></div>
+              <div class="ai-detail"><span class="ai-label">Intensidade:</span> <span id="aiIntensity">—</span></div>
+              <div class="ai-detail"><span class="ai-label">Seções:</span> <span id="aiSections">—</span></div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -144,6 +156,7 @@
 
   <div id="toast" class="toast"></div>
 
+  <script src="js/lyrics-analyzer.js"></script>
   <script src="js/music-engine.js"></script>
   <script src="js/app.js"></script>
 </body>
